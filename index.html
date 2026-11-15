@@ -61,6 +61,21 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .acts button{padding:10px 16px;border-radius:10px;border:1px solid var(--line);background:none;color:var(--text);font-weight:600}
 .acts .pri{background:var(--btn);color:var(--btnt);border-color:var(--btn)}
 .acts .del{color:var(--bad);margin-right:auto}
+.cyc{display:grid;gap:10px;padding:12px;border:1px solid var(--line);border-radius:12px}
+.h2s{margin-top:6px}
+.acts2{display:flex;gap:8px;flex-wrap:wrap}
+.note2{font-size:13px;color:var(--muted)}
+dialog{max-height:92vh;overflow:auto}
+#lock{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:100;padding:24px}
+#lock[hidden]{display:none}
+.lk{display:grid;gap:12px;width:min(320px,100%);text-align:center}
+.lk input{font:inherit;font-size:18px;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--text);text-align:center}
+.lk .pri{background:var(--btn);color:var(--btnt);border:0;border-radius:10px;padding:12px;font-weight:800}
+#lerr{color:var(--bad);font-size:14px;min-height:18px}
+.it{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.it.drag{position:relative;z-index:5;background:var(--card);box-shadow:0 8px 20px rgba(0,0,0,.3);border-radius:10px}
+.it.ob{box-shadow:inset 0 3px 0 var(--ok)}
+.it.oa{box-shadow:inset 0 -3px 0 var(--ok)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <link rel="manifest" href="manifest.webmanifest">
@@ -72,16 +87,31 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 </head>
 <body>
 <div class="app">
-  <header><h1>Meus gastos</h1><button class="ghost" id="rst">Restaurar exemplo</button></header>
+  <header><h1>Meus gastos</h1><button class="ghost" id="gear" aria-label="Configurações">⚙ Configurações</button></header>
   <div class="nav"><button id="pv" aria-label="Mês anterior">‹</button><div id="ml"></div><button id="nx" aria-label="Próximo mês">›</button></div>
-  <div class="seg" id="seg"><button data-v="all">Tudo</button><button data-v="15">Dia 15</button><button data-v="30">Final do mês</button></div>
+  <div class="seg" id="seg"></div>
   <div class="hero" id="hero"></div>
   <div id="cy"></div>
   <div class="card"><div class="ch"><h2>Sobra nos próximos meses</h2></div><div id="bars"></div></div>
-  <div class="bk"><button class="ghost" id="bx">Salvar backup</button><button class="ghost" id="bi">Restaurar backup</button><input type="file" id="bf" accept="application/json,.json" hidden></div>
-  <p class="note">Os dados ficam salvos só neste aparelho. Salve um backup de vez em quando.</p>
+  <p class="note">Os dados ficam salvos só neste aparelho. Faça backup pelo menu Configurações. Para reordenar, segure um gasto e arraste.</p>
 </div>
 <button class="fab" id="add">+ Novo gasto</button>
+
+<div id="lock" hidden><div class="lk"><h1>Meus gastos</h1><input id="lp" type="password" placeholder="Senha" autocomplete="current-password"><button type="button" class="pri" id="lgo">Entrar</button><div id="lerr"></div><button type="button" class="ghost" id="lfg">Esqueci a senha</button></div></div>
+
+<dialog id="sdlg">
+  <div class="dg">
+    <h2>Configurações</h2>
+    <label>Quantas vezes você recebe por mês?<select id="sn"><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
+    <div id="sc" class="dg"></div>
+    <h2 class="h2s">Senha do aplicativo</h2>
+    <div id="sp" class="dg"></div>
+    <h2 class="h2s">Dados</h2>
+    <div class="acts2"><button type="button" class="ghost" id="bx">Salvar backup</button><button type="button" class="ghost" id="bi">Restaurar backup</button><button type="button" class="ghost" id="rst">Restaurar exemplo</button></div>
+    <input type="file" id="bf" accept="application/json,.json" hidden>
+    <div class="acts"><button type="button" class="pri" id="sok">Concluir</button></div>
+  </div>
+</dialog>
 
 <dialog id="dlg">
   <div class="dg">
@@ -141,9 +171,14 @@ function seed(){
   a('Condomínio (dez)',350,'30',D,1,'Conta fixa');
   a('Condomínio',300,'30',J,0,'Conta fixa');
   a('Imposto de renda',52,'30',D,2,'Outro');
-  return {inc:{'15':1590,'30':1874},items:L};
+  return {cy:[{id:'15',rule:'dia',n:15,inc:1590},{id:'30',rule:'ultimo',n:0,inc:1874}],items:L};
 }
-function load(){try{const r=localStorage.getItem('cg1');if(r){const o=JSON.parse(r);o.items.forEach(e=>{e.t=(e.t==='Cartão'||e.t==='Variável')?'Variável':'Fixa'});return o}}catch(e){}return seed()}
+function mig(o){
+  if(!o.cy){const g=k=>+(o.inc&&o.inc[k])||0;o.cy=[{id:'15',rule:'dia',n:15,inc:g('15')},{id:'30',rule:'ultimo',n:0,inc:g('30')}];delete o.inc}
+  o.items.forEach(e=>{e.t=(e.t==='Cartão'||e.t==='Variável')?'Variável':'Fixa'});
+  return o;
+}
+function load(){try{const r=localStorage.getItem('cg1');if(r)return mig(JSON.parse(r))}catch(e){}return seed()}
 function save(){try{localStorage.setItem('cg1',JSON.stringify(S))}catch(e){}}
 let S=load();
 const now=new Date();
@@ -151,31 +186,41 @@ let M=ix(now.getFullYear(),now.getMonth()+1);
 let V='all';
 
 function occ(e,m){const d=m-e.s;if(d<0||d%e.e)return null;const j=d/e.e;if(e.k&&j>=e.k)return null;return j}
-function calc(m,c){const l=S.items.filter(e=>e.c===c&&occ(e,m)!==null).sort((a,b)=>b.v-a.v);const t=l.reduce((s,e)=>s+e.v,0);return{l,t,d:(+S.inc[c]||0)-t}}
-function sobra(m){return (V==='all'||V==='15'?calc(m,'15').d:0)+(V==='all'||V==='30'?calc(m,'30').d:0)}
+function calc(m,c){const l=S.items.filter(e=>e.c===c&&occ(e,m)!==null);const t=l.reduce((s,e)=>s+e.v,0);return{l,t,d:(+cyc(c).inc||0)-t}}
+function sobra(m){return S.cy.reduce((a,c)=>a+(V==='all'||V===c.id?calc(m,c.id).d:0),0)}
 
 function row(e){
   const j=occ(e,M);
   const p=e.k?' <span class="chip">'+(j+1)+'/'+e.k+'</span>':'';
   const ev=(!e.k?'recorrente':'')+(e.e>1?(!e.k?', ':'')+'a cada '+e.e+' meses':'');
-  return '<button class="it" data-id="'+e.id+'"><span class="nm">'+esc(e.name)+p+(ev?'<small>'+ev+'</small>':'')+'</span><span class="v">'+brl(e.v)+'</span></button>';
+  return '<button class="it" data-id="'+e.id+'" data-sec="'+e.c+'|'+e.t+'"><span class="nm">'+esc(e.name)+p+(ev?'<small>'+ev+'</small>':'')+'</span><span class="v">'+brl(e.v)+'</span></button>';
 }
 function sec(c,t,title,l){
   const x=l.filter(e=>e.t===t),s=x.reduce((a,e)=>a+e.v,0);
   return '<div class="sh">'+title+'<span>'+brl(s)+'</span><button class="ghost" data-add="'+c+'|'+t+'">+ Adicionar</button></div>'+(x.length?x.map(row).join(''):'<div class="empty">Nada neste mês.</div>');
 }
+const RULES={dia:'Dia fixo do mês',ultimo:'Último dia do mês',util:'Dia útil do mês'};
+const cname=c=>c.rule==='ultimo'?'Final do mês':c.rule==='util'?c.n+'º dia útil':'Dia '+c.n;
+const cyc=id=>S.cy.find(x=>x.id===id)||{id:id,rule:'dia',n:1,inc:0};
 function render(){
+  if(V!=='all'&&!S.cy.some(c=>c.id===V))V='all';
   $('ml').textContent=lab(M);
+  const multi=S.cy.length>1;
+  $('seg').style.display=multi?'':'none';
+  $('seg').innerHTML='<button data-v="all">Tudo</button>'+S.cy.map(c=>'<button data-v="'+c.id+'">'+esc(cname(c))+'</button>').join('');
   document.querySelectorAll('#seg button').forEach(x=>x.classList.toggle('on',x.dataset.v===V));
-  const a=calc(M,'15'),b=calc(M,'30'),sh=c=>V==='all'||V===c,inc=(sh('15')?+S.inc['15']||0:0)+(sh('30')?+S.inc['30']||0:0),g=(sh('15')?a.t:0)+(sh('30')?b.t:0),sb=inc-g;
-  $('hero').innerHTML='<div class="sub">Sobra em '+lab(M)+(V==='15'?' (Dia 15)':V==='30'?' (final do mês)':'')+'</div><div class="big '+(sb<0?'bad':'ok')+'">'+brl(sb)+'</div>'+
-    '<div class="row2"><div>Entra<b>'+brl(inc)+'</b></div><div>Sai<b>'+brl(g)+'</b></div></div>';
+  const R=S.cy.map(c=>({c:c,x:calc(M,c.id)}));
+  const vis=R.filter(r=>V==='all'||V===r.c.id);
+  const inc=vis.reduce((s,r)=>s+(+r.c.inc||0),0),g=vis.reduce((s,r)=>s+r.x.t,0),sb=inc-g;
+  const one=(multi&&V!=='all')?' ('+cname(cyc(V))+')':'';
+  $('hero').innerHTML='<div class="sub">Sobra em '+lab(M)+one+'</div><div class="big '+(sb<0?'bad':'ok')+'">'+brl(sb)+'</div><div class="row2"><div>Gastos<b>'+brl(g)+'</b></div></div>';
   let h='';
-  [['15','Dia 15',a],['30','Final do mês',b]].filter(x=>sh(x[0])).forEach(([c,t,x])=>{
-    h+='<div class="card"><div class="ch"><h2>'+t+'</h2><label class="inc">Recebe <input type="number" step="0.01" inputmode="decimal" data-inc="'+c+'" value="'+(S.inc[c]||0)+'"></label></div>';
-    const f=S.items.filter(e=>e.c===c).map(e=>e.s);
+  vis.forEach(r=>{
+    const c=r.c,x=r.x;
+    h+='<div class="card"><div class="ch"><h2>'+esc(cname(c))+'</h2></div>';
+    const f=S.items.filter(e=>e.c===c.id).map(e=>e.s);
     if(f.length&&M<Math.min(...f))h+='<div class="empty">Os gastos deste pagamento começam em '+lab(Math.min(...f))+'. Use ‹ › para mudar de mês.</div>';
-    h+=sec(c,'Fixa','Contas fixas',x.l)+sec(c,'Variável','Contas variáveis',x.l);
+    h+=sec(c.id,'Fixa','Contas fixas',x.l)+sec(c.id,'Variável','Contas variáveis',x.l);
     h+='<div class="ft"><span>Total de gastos</span><span>'+brl(x.t)+'</span></div>';
     h+='<div class="ft"><span>Disponível</span><span class="'+(x.d<0?'bad':'ok')+'">'+brl(x.d)+'</span></div></div>';
   });
@@ -190,7 +235,7 @@ let editing=null;
 function openDlg(id,c,t){
   const e=id?S.items.find(x=>x.id===id):null;editing=e;
   $('dt').textContent=e?'Editar gasto':'Novo gasto';
-  $('fn').value=e?e.name:'';$('fv').value=e?e.v:'';$('ft').value=e?e.t:(t||'Variável');$('fc').value=e?e.c:(c||(V==='30'?'30':'15'));
+  $('fn').value=e?e.name:'';$('fv').value=e?e.v:'';$('fc').innerHTML=S.cy.map(x=>'<option value="'+x.id+'">'+esc(cname(x))+'</option>').join('');$('ft').value=e?e.t:(t||'Variável');$('fc').value=e?e.c:(c||(V!=='all'?V:S.cy[0].id));
   const s=e?e.s:M;$('fs').value=Math.floor(s/12)+'-'+String(s%12+1).padStart(2,'0');
   $('fr').checked=e?!e.k:($('ft').value==='Fixa');$('fk').value=e&&e.k?e.k:1;$('fe').value=e?e.e:1;togk();
   $('fd').style.display=e?'':'none';
@@ -214,9 +259,8 @@ $('fsv').onclick=()=>{
 $('seg').addEventListener('click',e=>{const b=e.target.closest('button');if(b){V=b.dataset.v;render()}});
 $('pv').onclick=()=>{M--;render()};
 $('nx').onclick=()=>{M++;render()};
-$('rst').onclick=()=>{if(confirm('Voltar para os dados de exemplo? Suas alterações serão perdidas.')){S=seed();save();render()}};
-$('cy').addEventListener('click',e=>{const ad=e.target.closest('[data-add]');if(ad){const p=ad.dataset.add.split('|');openDlg(null,p[0],p[1]);return}const b=e.target.closest('.it');if(b)openDlg(b.dataset.id)});
-$('cy').addEventListener('change',e=>{const c=e.target.dataset.inc;if(c){S.inc[c]=parseFloat(e.target.value)||0;save();render()}});
+$('rst').onclick=()=>{if(confirm('Voltar para os dados de exemplo? Suas alterações serão perdidas.')){S=seed();save();render();renderSet()}};
+$('cy').addEventListener('click',e=>{if(Date.now()-sup<500)return;const ad=e.target.closest('[data-add]');if(ad){const p=ad.dataset.add.split('|');openDlg(null,p[0],p[1]);return}const b=e.target.closest('.it');if(b)openDlg(b.dataset.id)});
 $('bars').addEventListener('click',e=>{const b=e.target.closest('.b');if(b){M=+b.dataset.m;render()}});
 $('bx').onclick=()=>{
   const d=new Date(),n='backup-gastos-'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.json';
@@ -227,11 +271,118 @@ $('bi').onclick=()=>$('bf').click();
 $('bf').onchange=e=>{
   const f=e.target.files[0];if(!f)return;
   const r=new FileReader();
-  r.onload=()=>{try{const o=JSON.parse(r.result);if(!o||!o.inc||!Array.isArray(o.items))throw 0;
-    if(confirm('Substituir os dados atuais pelo backup?')){o.items.forEach(x=>{x.t=x.t==='Variável'?'Variável':'Fixa'});S=o;save();render()}}catch(x){alert('Arquivo de backup inválido.')}};
+  r.onload=()=>{try{const o=JSON.parse(r.result);if(!o||!(o.cy||o.inc)||!Array.isArray(o.items))throw 0;
+    if(confirm('Substituir os dados atuais pelo backup?')){S=mig(o);save();render();renderSet()}}catch(x){alert('Arquivo de backup inválido.')}};
   r.readAsText(f);e.target.value='';
 };
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
+function renderSet(){
+  $('sn').value=String(S.cy.length);
+  $('sc').innerHTML=S.cy.map((c,i)=>{
+    const opts=Object.keys(RULES).map(k=>'<option value="'+k+'"'+(k===c.rule?' selected':'')+'>'+RULES[k]+'</option>').join('');
+    const nf=c.rule==='ultimo'?'<span></span>':'<label>'+(c.rule==='util'?'Qual dia útil':'Qual dia')+'<input type="number" data-k="n" min="1" max="'+(c.rule==='util'?23:31)+'" value="'+c.n+'"></label>';
+    return '<div class="cyc" data-i="'+i+'"><b>Pagamento '+(i+1)+' ('+esc(cname(c))+')</b><div class="g2"><label>Quando cai<select data-k="rule">'+opts+'</select></label>'+nf+'</div><label>Quanto você recebe (R$)<input type="number" step="0.01" inputmode="decimal" data-k="inc" value="'+(c.inc||0)+'"></label></div>';
+  }).join('');
+  const has=!!getPw();
+  $('sp').innerHTML='<div class="note2">'+(has?'A senha está ativa neste aparelho.':'Sem senha: quem pegar o celular desbloqueado abre o app.')+'</div><label>'+(has?'Nova senha':'Criar senha')+'<input id="np" type="password" autocomplete="new-password" placeholder="Mínimo 4 caracteres"></label><div class="acts2"><button type="button" class="ghost" id="npb">Salvar senha</button>'+(has?'<button type="button" class="ghost" id="nrm">Remover senha</button>':'')+'</div>';
+}
+$('gear').onclick=()=>{renderSet();$('sdlg').showModal()};
+$('sok').onclick=()=>$('sdlg').close();
+$('sc').addEventListener('change',e=>{
+  const w=e.target.closest('.cyc'),k=e.target.dataset.k;if(!w||!k)return;
+  const c=S.cy[+w.dataset.i];
+  if(k==='rule'){c.rule=e.target.value;if(c.rule==='ultimo')c.n=0;else if(c.rule==='util'&&(c.n<1||c.n>23))c.n=5;else if(c.n<1)c.n=15}
+  else if(k==='n')c.n=Math.max(1,Math.min(c.rule==='util'?23:31,parseInt(e.target.value)||1));
+  else c.inc=parseFloat(e.target.value)||0;
+  save();render();renderSet();
+});
+$('sn').onchange=()=>{
+  const n=+$('sn').value;
+  if(n<S.cy.length){
+    if(!confirm('Os gastos dos pagamentos removidos serão movidos para o pagamento 1. Continuar?')){renderSet();return}
+    const gone=S.cy.slice(n).map(c=>c.id);
+    S.items.forEach(e=>{if(gone.includes(e.c))e.c=S.cy[0].id});
+    S.cy=S.cy.slice(0,n);
+  }else{while(S.cy.length<n)S.cy.push({id:'c'+Date.now()+S.cy.length,rule:'dia',n:10,inc:0})}
+  save();render();renderSet();
+};
+async function hash(p,s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s+':'+p));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('')}
+function getPw(){try{return JSON.parse(localStorage.getItem('cg1pw'))}catch(e){return null}}
+function setPw(o){try{if(o)localStorage.setItem('cg1pw',JSON.stringify(o));else localStorage.removeItem('cg1pw')}catch(e){}}
+async function savePw(){
+  const p=$('np').value;
+  if(p.length<4){alert('Use pelo menos 4 caracteres.');return}
+  if(!(window.crypto&&crypto.subtle)){alert('Este navegador não permite criar senha aqui.');return}
+  const s=Array.from(crypto.getRandomValues(new Uint8Array(8))).join('-');
+  setPw({s:s,h:await hash(p,s)});renderSet();alert('Senha salva.');
+}
+document.addEventListener('click',e=>{
+  if(e.target.id==='npb')savePw();
+  if(e.target.id==='nrm'&&confirm('Remover a senha do aplicativo?')){setPw(null);renderSet()}
+});
+function lockOn(){
+  if(!getPw())return;
+  document.querySelectorAll('dialog[open]').forEach(d=>d.close());
+  $('lock').hidden=false;$('lp').value='';$('lerr').textContent='';
+  setTimeout(()=>$('lp').focus(),50);
+}
+async function tryUnlock(){
+  const o=getPw();if(!o){$('lock').hidden=true;return}
+  let ok=false;try{ok=(await hash($('lp').value,o.s))===o.h}catch(e){}
+  if(ok){$('lock').hidden=true;$('lp').value=''}else{$('lerr').textContent='Senha incorreta.';$('lp').value=''}
+}
+$('lgo').onclick=tryUnlock;
+$('lp').onkeydown=e=>{if(e.key==='Enter')tryUnlock()};
+$('lfg').onclick=()=>{if(confirm('Sem a senha, o único jeito de entrar é apagar os dados deste aparelho (o seu backup continua valendo). Apagar tudo e entrar?')){try{localStorage.removeItem('cg1');localStorage.removeItem('cg1pw')}catch(e){}location.reload()}};
+let hid=0;
+document.addEventListener('visibilitychange',()=>{if(document.hidden)hid=Date.now();else if(hid&&Date.now()-hid>60000)lockOn()});
+lockOn();
+let sup=0,dg=null,dg0=null,tm=null;
+function cancelArm(){if(tm){clearTimeout(tm);tm=null}dg0=null}
+function pos(e){const t=(e.touches&&e.touches[0])||e;return{x:t.clientX,y:t.clientY}}
+function arm(el,p){cancelArm();dg0={el:el,x:p.x,y:p.y};tm=setTimeout(()=>{if(dg0)dStart(dg0.el,dg0.y);tm=null},380)}
+function dStart(el,y){
+  dg={el:el,y0:y,sy:window.scrollY,tgt:null,after:false};
+  el.classList.add('drag');
+  if(navigator.vibrate){try{navigator.vibrate(15)}catch(e){}}
+}
+function dMove(y){
+  const el=dg.el;
+  el.style.transform='translateY('+((y-dg.y0)+(window.scrollY-dg.sy))+'px)';
+  if(y<90)window.scrollBy(0,-12);else if(y>innerHeight-90)window.scrollBy(0,12);
+  document.querySelectorAll('.ob,.oa').forEach(x=>x.classList.remove('ob','oa'));
+  const sibs=[...document.querySelectorAll('#cy .it[data-sec="'+el.dataset.sec+'"]')].filter(x=>x!==el);
+  dg.tgt=null;
+  for(const s of sibs){const r=s.getBoundingClientRect();if(y<r.top+r.height/2){dg.tgt=s.dataset.id;dg.after=false;s.classList.add('ob');return}}
+  if(sibs.length){const l=sibs[sibs.length-1];dg.tgt=l.dataset.id;dg.after=true;l.classList.add('oa')}
+}
+function dEnd(){
+  const el=dg.el,sec=el.dataset.sec,id=el.dataset.id,tgt=dg.tgt,after=dg.after;
+  dg=null;sup=Date.now();
+  el.classList.remove('drag');el.style.transform='';
+  document.querySelectorAll('.ob,.oa').forEach(x=>x.classList.remove('ob','oa'));
+  if(!tgt)return;
+  const items=[...document.querySelectorAll('#cy .it[data-sec="'+sec+'"]')].map(x=>S.items.find(e=>e.id===x.dataset.id));
+  const idxs=items.map(e=>S.items.indexOf(e));
+  const mv=items.find(e=>e.id===id),rest=items.filter(e=>e!==mv),ti=rest.findIndex(e=>e.id===tgt);
+  rest.splice(after?ti+1:ti,0,mv);
+  rest.forEach((e,k)=>{S.items[idxs[k]]=e});
+  save();render();
+}
+$('cy').addEventListener('touchstart',e=>{const el=e.target.closest('.it');if(el)arm(el,pos(e))},{passive:true});
+$('cy').addEventListener('mousedown',e=>{if(e.button)return;const el=e.target.closest('.it');if(el)arm(el,pos(e))});
+$('cy').addEventListener('contextmenu',e=>{if(e.target.closest('.it'))e.preventDefault()});
+document.addEventListener('touchmove',e=>{
+  const p=pos(e);
+  if(dg){e.preventDefault();dMove(p.y);return}
+  if(dg0&&(Math.abs(p.y-dg0.y)>8||Math.abs(p.x-dg0.x)>8))cancelArm();
+},{passive:false});
+document.addEventListener('mousemove',e=>{
+  const p=pos(e);
+  if(dg){dMove(p.y);return}
+  if(dg0&&(Math.abs(p.y-dg0.y)>6||Math.abs(p.x-dg0.x)>6))cancelArm();
+});
+['touchend','touchcancel','mouseup'].forEach(n=>document.addEventListener(n,()=>{cancelArm();if(dg)dEnd()}));
 render();
 </script>
 <script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}</script>
