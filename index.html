@@ -86,6 +86,18 @@ h1 span{color:var(--ok)}
 .add+.sh{border-top:1px solid var(--line)}
 .tag{text-align:center;color:var(--muted);font-weight:600;font-size:15px;line-height:1.4;margin:26px 0 6px}
 .tag::after{content:"";display:block;width:120px;height:2px;margin:14px auto 0;background:linear-gradient(90deg,transparent,var(--ok),transparent)}
+header{position:relative}
+.mb{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--text);font-size:24px;line-height:1;font-weight:800}
+.menu{position:absolute;right:0;top:52px;z-index:40;min-width:236px;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 28px rgba(0,0,0,.28);padding:6px}
+.menu[hidden]{display:none}
+.menu button{display:block;width:100%;background:none;border:0;color:var(--text);text-align:left;padding:12px 14px;border-radius:10px;font-size:15px;min-height:46px}
+.menu button:active{background:var(--chip)}
+.msep{height:1px;background:var(--line);margin:4px 8px}
+.ph{margin:20px 4px 8px}
+.ph h2{font-size:19px}
+.hint{margin:0 4px 8px;color:var(--muted);font-size:13px}
+.card>.ft:first-child{border-top:0}
+.tips{margin:0;padding-left:20px;display:grid;gap:8px;font-size:15px}
 @keyframes sl{from{opacity:.2;transform:translateX(var(--d,0px))}to{opacity:1;transform:none}}
 .sw{animation:sl .22s ease-out}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}.sw{animation:none}}
@@ -99,17 +111,43 @@ h1 span{color:var(--ok)}
 </head>
 <body>
 <div class="app">
-  <header><div class="brand"><img src="logo.png" alt="" width="40" height="40"><h1>Fin<span>plan</span></h1></div><button class="ghost" id="gear" aria-label="Configurações">⚙ Configurações</button></header>
+  <header><div class="brand"><img src="logo.png" alt="" width="40" height="40"><h1>Fin<span>plan</span></h1></div><div class="mwrap"><button type="button" class="mb" id="mbtn" aria-label="Menu" aria-haspopup="true">⋮</button>
+    <div class="menu" id="menu" hidden>
+      <button type="button" data-a="set">Configurações</button>
+      <button type="button" data-a="today">Ir para este mês</button>
+      <div class="msep"></div>
+      <button type="button" id="bx">Salvar backup</button>
+      <button type="button" id="bi">Restaurar backup</button>
+      <div class="msep"></div>
+      <button type="button" data-a="theme" id="mth">Aparência: Automático</button>
+      <button type="button" data-a="lock" id="mlk" style="display:none">Bloquear agora</button>
+      <button type="button" data-a="help">Como usar</button>
+    </div></div></header>
   <div class="nav"><button id="pv" aria-label="Mês anterior">‹</button><div id="ml"></div><button id="nx" aria-label="Próximo mês">›</button></div>
   <div class="seg" id="seg"></div>
   <div class="hero" id="hero"></div>
   <div id="cy"></div>
   <div class="card"><div class="ch"><h2>Sobra nos próximos meses</h2></div><div id="bars"></div></div>
   <p class="tag">Seu dinheiro planejado.<br>Seu futuro previsível.</p>
-  <p class="note">Os dados ficam salvos só neste aparelho. Faça backup pelo menu Configurações. Para reordenar, segure um gasto e arraste. Para mudar de mês, deslize para o lado.</p>
+  
 </div>
 
 
+<input type="file" id="bf" accept="application/json,.json" hidden>
+<dialog id="hdlg">
+  <div class="dg">
+    <h2>Como usar</h2>
+    <ul class="tips">
+      <li>Toque em um gasto para editar ou apagar.</li>
+      <li>Segure um gasto e arraste para reordenar.</li>
+      <li>Deslize para o lado para mudar de mês.</li>
+      <li>Use “+ Adicionar” no fim de cada lista para lançar um gasto.</li>
+      <li>O app lembra o último mês e a última aba que você usou.</li>
+      <li>Os dados ficam salvos só neste aparelho. Faça backup de vez em quando, pelo menu ⋮.</li>
+    </ul>
+    <div class="acts"><button type="button" class="pri" id="hok">Entendi</button></div>
+  </div>
+</dialog>
 <div id="lock" hidden><div class="lk"><img src="logo.png" alt="" width="88" height="88"><h1>Fin<span>plan</span></h1><input id="lp" type="password" placeholder="Senha" autocomplete="current-password"><button type="button" class="pri" id="lgo">Entrar</button><div id="lerr"></div><button type="button" class="ghost" id="lfg">Esqueci a senha</button></div></div>
 
 <dialog id="sdlg">
@@ -120,8 +158,7 @@ h1 span{color:var(--ok)}
     <h2 class="h2s">Senha do aplicativo</h2>
     <div id="sp" class="dg"></div>
     <h2 class="h2s">Dados</h2>
-    <div class="acts2"><button type="button" class="ghost" id="bx">Salvar backup</button><button type="button" class="ghost" id="bi">Restaurar backup</button><button type="button" class="ghost" id="rst">Restaurar exemplo</button></div>
-    <input type="file" id="bf" accept="application/json,.json" hidden>
+    <div class="acts2"><button type="button" class="ghost" id="rst">Restaurar exemplo</button></div>
     <div class="acts"><button type="button" class="pri" id="sok">Concluir</button></div>
   </div>
 </dialog>
@@ -234,11 +271,11 @@ function render(){
   let h='';
   vis.forEach(r=>{
     const c=r.c,x=r.x;
-    h+='<div class="card"><div class="ch"><h2>'+esc(cname(c))+'</h2></div>';
+    h+='<div class="ph"><h2>'+esc(cname(c))+'</h2></div>';
     const f=S.items.filter(e=>e.c===c.id).map(e=>e.s);
-    if(f.length&&M<Math.min(...f))h+='<div class="empty">Os gastos deste pagamento começam em '+lab(Math.min(...f))+'. Use ‹ › para mudar de mês.</div>';
-    h+=sec(c.id,'Fixa','Contas fixas',x.l)+sec(c.id,'Variável','Contas variáveis',x.l);
-    h+='<div class="ft"><span>Total de gastos</span><span>'+brl(x.t)+'</span></div>';
+    if(f.length&&M<Math.min(...f))h+='<p class="hint">Os gastos deste pagamento começam em '+lab(Math.min(...f))+'. Use ‹ › para mudar de mês.</p>';
+    h+='<div class="card">'+sec(c.id,'Fixa','Contas fixas',x.l)+'</div><div class="card">'+sec(c.id,'Variável','Contas variáveis',x.l)+'</div>';
+    h+='<div class="card"><div class="ft"><span>Total de gastos</span><span>'+brl(x.t)+'</span></div>';
     h+='<div class="ft"><span>Disponível</span><span class="'+(x.d<0?'bad':'ok')+'">'+brl(x.d)+'</span></div></div>';
   });
   $('cy').innerHTML=h;
@@ -304,7 +341,34 @@ function renderSet(){
   const has=!!getPw();
   $('sp').innerHTML='<div class="note2">'+(has?'A senha está ativa neste aparelho.':'Sem senha: quem pegar o celular desbloqueado abre o app.')+'</div><label>'+(has?'Nova senha':'Criar senha')+'<input id="np" type="password" autocomplete="new-password" placeholder="Mínimo 4 caracteres"></label><div class="acts2"><button type="button" class="ghost" id="npb">Salvar senha</button>'+(has?'<button type="button" class="ghost" id="nrm">Remover senha</button>':'')+'</div>';
 }
-$('gear').onclick=()=>{renderSet();$('sdlg').showModal()};
+function openSet(){renderSet();$('sdlg').showModal()}
+const THEMES=['','light','dark'],TN={'':'Automático',light:'Claro',dark:'Escuro'};
+function getTheme(){try{return localStorage.getItem('cg1theme')||''}catch(e){return ''}}
+function applyTheme(){
+  const t=getTheme();
+  if(t)document.documentElement.setAttribute('data-theme',t);else document.documentElement.removeAttribute('data-theme');
+  $('mth').textContent='Aparência: '+TN[t];
+}
+function menuToggle(show){
+  const m=$('menu');
+  if(show===undefined)show=m.hidden;
+  if(show){$('mlk').style.display=getPw()?'':'none';applyTheme()}
+  m.hidden=!show;
+}
+$('mbtn').onclick=e=>{e.stopPropagation();menuToggle()};
+document.addEventListener('click',e=>{if(!$('menu').hidden&&!e.target.closest('#menu')&&!e.target.closest('#mbtn'))menuToggle(false)});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')menuToggle(false)});
+$('menu').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  const a=b.dataset.a;menuToggle(false);
+  if(a==='set')openSet();
+  else if(a==='today'){const d=new Date();M=ix(d.getFullYear(),d.getMonth()+1);render()}
+  else if(a==='theme'){const n=THEMES[(THEMES.indexOf(getTheme())+1)%3];try{localStorage.setItem('cg1theme',n)}catch(x){}applyTheme()}
+  else if(a==='lock')lockOn();
+  else if(a==='help')$('hdlg').showModal();
+});
+$('hok').onclick=()=>$('hdlg').close();
+applyTheme();
 $('sok').onclick=()=>$('sdlg').close();
 $('sc').addEventListener('change',e=>{
   const w=e.target.closest('.cyc'),k=e.target.dataset.k;if(!w||!k)return;
@@ -409,7 +473,7 @@ function go(d){
 }
 const appEl=document.querySelector('.app');
 appEl.addEventListener('touchstart',e=>{
-  if(e.touches.length!==1||e.target.closest('#bars,input,select,textarea')){sw0=null;return}
+  if(e.touches.length!==1||e.target.closest('#bars,#menu,input,select,textarea')){sw0=null;return}
   sw0={x:e.touches[0].clientX,y:e.touches[0].clientY};
 },{passive:true});
 appEl.addEventListener('touchend',e=>{
