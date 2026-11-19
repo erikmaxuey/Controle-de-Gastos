@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Finplan</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;800&display=swap">
 <style>
@@ -98,6 +98,19 @@ header{position:relative}
 .hint{margin:0 4px 8px;color:var(--muted);font-size:13px}
 .card>.ft:first-child{border-top:0}
 .tips{margin:0;padding-left:20px;display:grid;gap:8px;font-size:15px}
+#dlg{margin:10px auto auto;max-height:calc(100dvh - 20px)}
+.dg.cp{gap:8px;padding:14px}
+.dg.cp h2{font-size:17px}
+.dg.cp label{gap:2px;font-size:12px}
+.dg.cp input,.dg.cp select{padding:8px 10px;font-size:16px;border-radius:9px}
+.dg.cp input[type=checkbox]{width:22px;height:22px;padding:0}
+.dg.cp label.chk{font-size:14px;padding-bottom:8px}
+.dg.cp .g2{gap:8px}
+.g2.a{grid-template-columns:5fr 6fr}
+.g2.b,.g2.c{grid-template-columns:6fr 4fr}
+.g2.c{align-items:end}
+.dg.cp .acts{margin-top:2px}
+.dg.cp .acts button{padding:9px 14px}
 @keyframes sl{from{opacity:.2;transform:translateX(var(--d,0px))}to{opacity:1;transform:none}}
 .sw{animation:sl .22s ease-out}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}.sw{animation:none}}
@@ -145,6 +158,7 @@ header{position:relative}
       <li>O app lembra o último mês e a última aba que você usou.</li>
       <li>Os dados ficam salvos só neste aparelho. Faça backup de vez em quando, pelo menu ⋮.</li>
     </ul>
+    <p class="note2">Finplan, versão 9</p>
     <div class="acts"><button type="button" class="pri" id="hok">Entendi</button></div>
   </div>
 </dialog>
@@ -164,20 +178,20 @@ header{position:relative}
 </dialog>
 
 <dialog id="dlg">
-  <div class="dg">
+  <div class="dg cp">
     <h2 id="dt">Novo gasto</h2>
-    <label>Nome<input id="fn" type="text" placeholder="Ex.: Academia"></label>
-    <div class="g2">
-      <label>Valor (R$)<input id="fv" type="number" step="0.01" inputmode="decimal"></label>
-      <label>Tipo<select id="ft"><option value="Fixa">Conta fixa</option><option value="Variável">Conta variável (cartão)</option></select></label>
+    <label>Nome<input id="fn" type="text" placeholder="Ex.: Mercado" autocomplete="off"></label>
+    <div class="g2 a">
+      <label>Valor (R$)<input id="fv" type="text" inputmode="numeric" autocomplete="off" placeholder="0,00"></label>
+      <label>Pago com<select id="fc"></select></label>
     </div>
-    <div class="g2">
-      <label>Pago com<select id="fc"><option value="15">Dia 15</option><option value="30">Final do mês</option></select></label>
+    <label id="ftl">Tipo<select id="ft"><option value="Fixa">Conta fixa</option><option value="Variável">Conta variável (cartão)</option></select></label>
+    <div class="g2 b">
       <label>Começa em<input id="fs" type="month"></label>
-    </div>
-    <label class="chk"><input id="fr" type="checkbox"> Recorrente (todo mês, sem data para acabar)</label>
-    <div class="g2">
       <label id="fkl">Quantas vezes<input id="fk" type="number" min="1" step="1" inputmode="numeric"></label>
+    </div>
+    <div class="g2 c">
+      <label class="chk"><input id="fr" type="checkbox"> Recorrente (sem fim)</label>
       <label>A cada (meses)<input id="fe" type="number" min="1" step="1" inputmode="numeric"></label>
     </div>
     <div class="acts"><button type="button" class="del" id="fd">Excluir</button><button type="button" id="fx">Cancelar</button><button type="button" class="pri" id="fsv">Salvar</button></div>
@@ -289,22 +303,28 @@ let editing=null;
 function openDlg(id,c,t){
   const e=id?S.items.find(x=>x.id===id):null;editing=e;
   $('dt').textContent=e?'Editar gasto':(t==='Fixa'?'Novo gasto fixo':'Novo gasto variável');
-  $('fn').value=e?e.name:'';$('fv').value=e?e.v:'';$('fc').innerHTML=S.cy.map(x=>'<option value="'+x.id+'">'+esc(cname(x))+'</option>').join('');$('ft').value=e?e.t:(t||'Variável');$('fc').value=e?e.c:(c||(V!=='all'?V:S.cy[0].id));
+  $('fn').value=e?e.name:'';$('fv').value=e?fmtMoney(e.v):'';$('fc').innerHTML=S.cy.map(x=>'<option value="'+x.id+'">'+esc(cname(x))+'</option>').join('');$('ft').value=e?e.t:(t||'Variável');$('fc').value=e?e.c:(c||(V!=='all'?V:S.cy[0].id));
   const s=e?e.s:M;$('fs').value=Math.floor(s/12)+'-'+String(s%12+1).padStart(2,'0');
   $('fr').checked=e?!e.k:($('ft').value==='Fixa');$('fk').value=e&&e.k?e.k:1;$('fe').value=e?e.e:1;togk();
   $('fd').style.display=e?'':'none';
-  $('ft').parentNode.style.display=e?'':'none';
-  $('fv').parentNode.style.gridColumn=e?'':'1 / -1';
+  $('ftl').style.display=e?'':'none';
+  
   $('dlg').showModal();
 }
-function togk(){$('fkl').style.display=$('fr').checked?'none':''}
+function togk(){const r=$('fr').checked;$('fkl').style.display=r?'none':'';$('fs').parentNode.style.gridColumn=r?'1 / -1':''}
+function fmtMoney(v){return (Math.round((+v||0)*100)/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function parseMoney(t){const d=String(t).replace(/\D/g,'');return d?parseInt(d,10)/100:NaN}
+$('fv').addEventListener('input',()=>{
+  const d=$('fv').value.replace(/\D/g,'').replace(/^0+/,'').slice(0,11);
+  $('fv').value=d?fmtMoney(parseInt(d,10)/100):'';
+});
 $('fr').onchange=togk;
 $('ft').onchange=()=>{if(!editing){$('fr').checked=$('ft').value==='Fixa';togk()}};
 $('fx').onclick=()=>$('dlg').close();
 $('fd').onclick=()=>{S.items=S.items.filter(x=>x!==editing);save();$('dlg').close();render()};
 $('fsv').onclick=()=>{
-  const name=$('fn').value.trim(),v=parseFloat($('fv').value);
-  if(!name||isNaN(v)||v<0){$('fn').focus();return}
+  const name=$('fn').value.trim(),v=parseMoney($('fv').value);
+  if(!name){$('fn').focus();return}if(isNaN(v)||v<0){$('fv').focus();return}
   const p=($('fs').value||'').split('-');
   const s=p.length===2?ix(+p[0],+p[1]):M;
   const o={name,v,t:$('ft').value,c:$('fc').value,s,k:$('fr').checked?0:Math.max(1,parseInt($('fk').value)||1),e:Math.max(1,parseInt($('fe').value)||1)};
@@ -484,6 +504,6 @@ appEl.addEventListener('touchend',e=>{
 },{passive:true});
 render();
 </script>
-<script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}</script>
+<script>if("serviceWorker" in navigator){const had=!!navigator.serviceWorker.controller;let rl=false;navigator.serviceWorker.addEventListener("controllerchange",()=>{if(had&&!rl){rl=true;location.reload()}});window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").then(r=>r.update()).catch(()=>{}))}</script>
 </body>
 </html>
